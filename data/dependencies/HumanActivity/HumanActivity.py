@@ -115,14 +115,41 @@ class HumanActivity(object):
 
             records.append((record_id, tt, vals, mask))
 
-
+        # Change starts here
         for url, checksum in zip(self.urls, self.checksums):
             filename = url.rpartition('/')[2]
-            response = requests.get(url, stream=True)
-            response.raise_for_status()
-            with open(f"{self.raw_folder}/{filename}", 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
+            local_path = os.path.join(self.raw_folder, filename)
+
+            # Skip download if file already exists
+            if os.path.exists(local_path):
+                print(f"[INFO] Found existing file at {local_path}, skipping download.")
+            else:
+                print(f"[INFO] Downloading {filename} from {url} ...")
+                try:
+                    response = requests.get(url, stream=True, timeout=30)
+                    response.raise_for_status()
+                    with open(local_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to download {filename}. Please ensure it exists at {local_path}. Error: {e}"
+                    )
+
+            # Verify checksum (only if file exists)
+            assert self._calculate_md5(local_path) == checksum, (
+                f"MD5 hash check failed for {local_path}. The file may be corrupted!"
+            )
+        # Change ends here
+
+
+        # for url, checksum in zip(self.urls, self.checksums):
+        #     filename = url.rpartition('/')[2]
+        #     response = requests.get(url, stream=True)
+        #     response.raise_for_status()
+        #     with open(f"{self.raw_folder}/{filename}", 'wb') as f:
+        #         for chunk in response.iter_content(chunk_size=8192):
+        #             f.write(chunk)
 
             assert self._calculate_md5(f"{self.raw_folder}/{filename}") == checksum, f"MD5 hash check failed. Downloaded raw dataset file at {self.raw_folder}/{filename} may be broken!"
 
