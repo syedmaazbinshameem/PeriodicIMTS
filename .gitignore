@@ -6,7 +6,6 @@ notes.md
 *.safetensors
 pytorch.bin
 
-storage/
 log/
 logs/
 wandb/
